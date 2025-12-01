@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import Head from "next/head"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -49,6 +48,7 @@ interface GameState {
   showHint: boolean
   currentHint: string
   hintLevel: number
+  stealthEnergy: number
 }
 
 interface LevelConfig {
@@ -57,21 +57,21 @@ interface LevelConfig {
   description: string
   difficulty: "Easy" | "Medium" | "Hard" | "Extreme" | "Nightmare" | "Impossible" | "Legendary"
   puzzleType:
-    | "codeFragment"
-    | "logicGate"
-    | "memorySequence"
-    | "algorithmReconstruction"
-    | "terminalHacking"
-    | "binaryTree"
-    | "graphTraversal"
-    | "hashTable"
-    | "dynamicProgramming"
-    | "multiAlgorithm"
-    | "stackOverflow"
-    | "linkedListCorruption"
-    | "recursionLoop"
-    | "databaseCorruption"
-    | "networkProtocol"
+  | "codeFragment"
+  | "logicGate"
+  | "memorySequence"
+  | "algorithmReconstruction"
+  | "terminalHacking"
+  | "binaryTree"
+  | "graphTraversal"
+  | "hashTable"
+  | "dynamicProgramming"
+  | "multiAlgorithm"
+  | "stackOverflow"
+  | "linkedListCorruption"
+  | "recursionLoop"
+  | "databaseCorruption"
+  | "networkProtocol"
   enemyCount: number
   timeLimit: number
   corruptionRate: number
@@ -263,7 +263,7 @@ const LEVELS: LevelConfig[] = [
 ]
 
 // Hint system data
-const HINTS = {
+const HINTS: Record<string, string[]> = {
   codeFragment: [
     "💡 Try to arrange the code lines in logical execution order",
     "🔍 Look for function declaration, condition check, and return statements",
@@ -360,38 +360,173 @@ export default function GhostFrame() {
     showHint: false,
     currentHint: "",
     hintLevel: 0,
+    stealthEnergy: 100,
   })
 
   const [glitchIntensity, setGlitchIntensity] = useState(0.3)
   const [terminalInput, setTerminalInput] = useState("")
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([])
+  const [terminalOutput, setTerminalOutput] = useState<string[]>([
+    "GHOSTFRAME OS v1.0.4",
+    "Initializing secure connection...",
+    "Connection established.",
+    "Awaiting command input...",
+  ])
   const [currentPuzzleData, setCurrentPuzzleData] = useState<any>({})
+
+  const handleTerminalSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!terminalInput.trim()) return
+
+    const command = terminalInput.trim().toLowerCase()
+    setTerminalOutput((prev) => [...prev, `> ${command}`])
+
+    if (command === "help") {
+      setTerminalOutput((prev) => [...prev, "Available commands: scan, isolate, purge, restore"])
+    } else if (command === "clear") {
+      setTerminalOutput([])
+    } else {
+      handlePuzzleAction("command", command)
+    }
+
+    setTerminalInput("")
+  }
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
 
-  const currentLevelConfig = LEVELS[gameState.currentLevel - 1]
+  const playSynthSound = (type: "hover" | "click" | "success" | "error" | "glitch" | "gamestart") => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+    }
 
-  // Dynamic title based on game state
-  const getPageTitle = () => {
-    switch (gameState.currentScreen) {
-      case "intro":
-        return "💀 GHOSTFRAME - Corruption Protocol"
-      case "levelSelect":
-        return "💀 GHOSTFRAME - Level Select"
-      case "game":
-        return `💀 GHOSTFRAME - Level ${gameState.currentLevel}`
-      case "gameOver":
-        return "💀 GHOSTFRAME - System Failure"
-      case "escape":
-        return "💀 GHOSTFRAME - Escape Successful"
-      default:
-        return "💀 GHOSTFRAME - Horror Programming Game"
+    const ctx = audioContextRef.current
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    const now = ctx.currentTime
+
+    switch (type) {
+      case "hover":
+        osc.type = "sine"
+        osc.frequency.setValueAtTime(440, now)
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.05)
+        gain.gain.setValueAtTime(0.05, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+        osc.start(now)
+        osc.stop(now + 0.05)
+        break
+
+      case "click":
+        osc.type = "square"
+        osc.frequency.setValueAtTime(880, now)
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.1)
+        gain.gain.setValueAtTime(0.1, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+        osc.start(now)
+        osc.stop(now + 0.1)
+        break
+
+      case "success":
+        osc.type = "triangle"
+        osc.frequency.setValueAtTime(440, now)
+        osc.frequency.setValueAtTime(554, now + 0.1) // C#
+        osc.frequency.setValueAtTime(659, now + 0.2) // E
+        gain.gain.setValueAtTime(0.1, now)
+        gain.gain.linearRampToValueAtTime(0.1, now + 0.3)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6)
+        osc.start(now)
+        osc.stop(now + 0.6)
+        break
+
+      case "error":
+        osc.type = "sawtooth"
+        osc.frequency.setValueAtTime(110, now)
+        osc.frequency.linearRampToValueAtTime(55, now + 0.3)
+        gain.gain.setValueAtTime(0.2, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
+        osc.start(now)
+        osc.stop(now + 0.3)
+        break
+
+      case "glitch":
+        osc.type = "sawtooth"
+        osc.frequency.setValueAtTime(Math.random() * 1000 + 100, now)
+        osc.frequency.linearRampToValueAtTime(Math.random() * 1000 + 100, now + 0.1)
+        gain.gain.setValueAtTime(0.1, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+        osc.start(now)
+        osc.stop(now + 0.1)
+        break
+
+      case "gamestart":
+        osc.type = "sine"
+        osc.frequency.setValueAtTime(220, now)
+        osc.frequency.exponentialRampToValueAtTime(880, now + 1)
+        gain.gain.setValueAtTime(0.3, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5)
+        osc.start(now)
+        osc.stop(now + 1.5)
+        break
     }
   }
 
+  const currentLevelConfig = LEVELS[gameState.currentLevel - 1]
+
+
+
   // Hint system functions
+
   const getHint = (puzzleType: string, level: number) => {
+    // Dynamic hints based on puzzle state
+    if (puzzleType === "codeFragment") {
+      const { currentOrder, fragments } = currentPuzzleData
+      if (!currentOrder || !fragments) return "💡 Arrange the code lines to form a valid function."
+
+      const firstLine = fragments[currentOrder[0]]
+      const lastLine = fragments[currentOrder[currentOrder.length - 1]]
+
+      if (!firstLine.includes("function escape()")) {
+        return "💡 The function must start with the definition: 'function escape() {'"
+      }
+      if (lastLine.trim() !== "}") {
+        return "💡 The function must end with a closing brace '}'"
+      }
+      // Check for return true inside if
+      const ifIndex = currentOrder.findIndex((idx: number) => fragments[idx].includes("if (corruption"))
+      const returnTrueIndex = currentOrder.findIndex((idx: number) => fragments[idx].includes("return true"))
+
+      if (ifIndex !== -1 && returnTrueIndex !== -1 && returnTrueIndex !== ifIndex + 1) {
+        return "💡 The 'return true' statement should be immediately inside the 'if' block."
+      }
+
+      return "💡 Ensure the logic flows correctly: check condition -> return true -> otherwise return false."
+    }
+
+    if (puzzleType === "logicGate") {
+      const { gates } = currentPuzzleData
+      if (!gates) return "💡 Solve each logic gate to proceed."
+
+      const unsolvedGate = gates.find((g: any) => g.output === null)
+      if (unsolvedGate) {
+        const { type, inputs, id } = unsolvedGate
+        const inputStr = inputs.map((i: boolean) => i ? "TRUE" : "FALSE").join(" and ")
+
+        if (type === "AND") return `💡 Gate ${id} (AND): Returns TRUE only if BOTH inputs are TRUE.`
+        if (type === "OR") return `💡 Gate ${id} (OR): Returns TRUE if AT LEAST ONE input is TRUE.`
+        if (type === "NOT") return `💡 Gate ${id} (NOT): Inverts the input (TRUE becomes FALSE).`
+        if (type === "XOR") return `💡 Gate ${id} (XOR): Returns TRUE if inputs are DIFFERENT.`
+      }
+      return "💡 Check your logic tables. AND needs both, OR needs one, XOR needs different inputs."
+    }
+
+    if (puzzleType === "memorySequence") {
+      return "💡 Focus on the pattern. The sequence adds one new color each round. 0=Red, 1=Blue, 2=Green, 3=Yellow."
+    }
+
     const hints = HINTS[puzzleType] || ["💡 Analyze the problem carefully and try different approaches"]
     return hints[Math.min(level, hints.length - 1)]
   }
@@ -458,11 +593,22 @@ export default function GhostFrame() {
         () => {
           setGameState((prev) => ({
             ...prev,
-            enemyPositions: prev.enemyPositions.map((enemy) => ({
-              ...enemy,
-              x: Math.max(5, Math.min(95, enemy.x + (Math.random() - 0.5) * 25)),
-              y: Math.max(5, Math.min(95, enemy.y + (Math.random() - 0.5) * 25)),
-            })),
+            enemyPositions: prev.enemyPositions.map((enemy) => {
+              // If player is hidden, enemies wander randomly instead of chasing
+              if (prev.playerHidden) {
+                return {
+                  ...enemy,
+                  x: Math.max(5, Math.min(95, enemy.x + (Math.random() - 0.5) * 20)),
+                  y: Math.max(5, Math.min(95, enemy.y + (Math.random() - 0.5) * 20)),
+                }
+              }
+              // Normal movement logic (simplified chase behavior for now)
+              return {
+                ...enemy,
+                x: Math.max(5, Math.min(95, enemy.x + (Math.random() - 0.5) * 25)),
+                y: Math.max(5, Math.min(95, enemy.y + (Math.random() - 0.5) * 25)),
+              }
+            }),
           }))
         },
         Math.max(400, 2000 - currentLevelConfig.id * 100),
@@ -471,6 +617,27 @@ export default function GhostFrame() {
       return () => clearInterval(moveInterval)
     }
   }, [gameState.currentScreen, currentLevelConfig])
+
+  // Stealth Energy System
+  useEffect(() => {
+    if (gameState.currentScreen === "game") {
+      const stealthInterval = setInterval(() => {
+        setGameState((prev) => {
+          if (prev.playerHidden) {
+            const newEnergy = Math.max(0, prev.stealthEnergy - 2) // Drain 2% per tick
+            if (newEnergy === 0) {
+              return { ...prev, stealthEnergy: 0, playerHidden: false } // Force visible
+            }
+            return { ...prev, stealthEnergy: newEnergy }
+          } else {
+            return { ...prev, stealthEnergy: Math.min(100, prev.stealthEnergy + 1) } // Regen 1% per tick
+          }
+        })
+      }, 100) // Run every 100ms
+
+      return () => clearInterval(stealthInterval)
+    }
+  }, [gameState.currentScreen])
 
   // Dynamic corruption
   useEffect(() => {
@@ -499,6 +666,7 @@ export default function GhostFrame() {
       showHint: false,
       currentHint: "",
       hintLevel: 0,
+      stealthEnergy: 100,
     }))
     setGlitchIntensity(0.2 + (levelId - 1) * 0.04)
     initializePuzzle(config.puzzleType, levelId)
@@ -512,7 +680,7 @@ export default function GhostFrame() {
             "function escape() {",
             "  if (corruption.level < 50) {",
             "    return true;",
-            "  }",
+            "}",
             "  return false;",
             "}",
           ],
@@ -739,13 +907,21 @@ export default function GhostFrame() {
     switch (config.puzzleType) {
       case "codeFragment":
         if (action === "reorder") {
-          setCurrentPuzzleData((prev) => ({ ...prev, currentOrder: data }))
+          setCurrentPuzzleData((prev: any) => ({ ...prev, currentOrder: data }))
         } else if (action === "check") {
-          const isCorrect =
-            JSON.stringify(currentPuzzleData.currentOrder) === JSON.stringify(currentPuzzleData.correctOrder)
+          const currentContent = currentPuzzleData.currentOrder.map(
+            (index: number) => currentPuzzleData.fragments[index],
+          )
+          const correctContent = currentPuzzleData.correctOrder.map(
+            (index: number) => currentPuzzleData.fragments[index],
+          )
+          const isCorrect = JSON.stringify(currentContent) === JSON.stringify(correctContent)
+
           if (isCorrect) {
+            playSynthSound("success")
             completeLevel()
           } else {
+            playSynthSound("error")
             takeDamage(10)
             incrementFailureCount()
           }
@@ -754,7 +930,7 @@ export default function GhostFrame() {
 
       case "algorithmReconstruction":
         if (action === "reorder") {
-          setCurrentPuzzleData((prev) => ({ ...prev, currentOrder: data }))
+          setCurrentPuzzleData((prev: any) => ({ ...prev, currentOrder: data }))
         } else if (action === "check") {
           const isCorrect =
             JSON.stringify(currentPuzzleData.currentOrder) === JSON.stringify(currentPuzzleData.correctOrder)
@@ -779,7 +955,7 @@ export default function GhostFrame() {
             newStack.pop()
           }
 
-          setCurrentPuzzleData((prev) => ({
+          setCurrentPuzzleData((prev: any) => ({
             ...prev,
             stack: newStack,
             currentOperation: prev.currentOperation + 1,
@@ -800,7 +976,7 @@ export default function GhostFrame() {
       case "linkedListCorruption":
         if (action === "connect") {
           const newConnections = [...currentPuzzleData.playerConnections, data]
-          setCurrentPuzzleData((prev) => ({ ...prev, playerConnections: newConnections }))
+          setCurrentPuzzleData((prev: any) => ({ ...prev, playerConnections: newConnections }))
 
           if (newConnections.length === currentPuzzleData.correctConnections.length) {
             const isCorrect =
@@ -810,7 +986,7 @@ export default function GhostFrame() {
             } else {
               takeDamage(25)
               incrementFailureCount()
-              setCurrentPuzzleData((prev) => ({ ...prev, playerConnections: [] }))
+              setCurrentPuzzleData((prev: any) => ({ ...prev, playerConnections: [] }))
             }
           }
         }
@@ -820,7 +996,7 @@ export default function GhostFrame() {
         if (action === "step") {
           const isCorrect = data === currentPuzzleData.recursionSteps[currentPuzzleData.currentStep]
           if (isCorrect) {
-            setCurrentPuzzleData((prev) => ({
+            setCurrentPuzzleData((prev: any) => ({
               ...prev,
               currentStep: prev.currentStep + 1,
               playerSteps: [...prev.playerSteps, data],
@@ -831,130 +1007,6 @@ export default function GhostFrame() {
             }
           } else {
             takeDamage(30)
-            incrementFailureCount()
-          }
-        }
-        break
-
-      case "databaseCorruption":
-        if (action === "query") {
-          setCurrentPuzzleData((prev) => ({
-            ...prev,
-            solved: prev.solved + 1,
-            currentQuery: prev.currentQuery + 1,
-          }))
-
-          if (currentPuzzleData.solved + 1 >= currentPuzzleData.queries.length) {
-            completeLevel()
-          }
-        }
-        break
-
-      case "networkProtocol":
-        if (action === "repair") {
-          const layerIndex = data
-          if (currentPuzzleData.corruptedLayers.includes(layerIndex)) {
-            setCurrentPuzzleData((prev) => ({
-              ...prev,
-              repairedLayers: [...prev.repairedLayers, layerIndex],
-            }))
-
-            if (currentPuzzleData.repairedLayers.length + 1 >= currentPuzzleData.corruptedLayers.length) {
-              completeLevel()
-            }
-          } else {
-            takeDamage(20)
-            incrementFailureCount()
-          }
-        }
-        break
-
-      // ... (other puzzle types remain the same)
-      case "logicGate":
-        if (action === "solve") {
-          const gate = currentPuzzleData.gates.find((g) => g.id === data.id)
-          let correctOutput = false
-
-          switch (gate.type) {
-            case "AND":
-              correctOutput = gate.inputs[0] && gate.inputs[1]
-              break
-            case "OR":
-              correctOutput = gate.inputs[0] || gate.inputs[1]
-              break
-            case "NOT":
-              correctOutput = !gate.inputs[0]
-              break
-            case "XOR":
-              correctOutput = gate.inputs[0] !== gate.inputs[1]
-              break
-          }
-
-          if (data.output === correctOutput) {
-            setCurrentPuzzleData((prev) => ({
-              ...prev,
-              solved: prev.solved + 1,
-              gates: prev.gates.map((g) => (g.id === data.id ? { ...g, output: data.output } : g)),
-            }))
-
-            if (currentPuzzleData.solved + 1 >= currentPuzzleData.required) {
-              completeLevel()
-            }
-          } else {
-            takeDamage(15)
-            incrementFailureCount()
-          }
-        }
-        break
-
-      case "memorySequence":
-        if (action === "input") {
-          const newSequence = [...currentPuzzleData.playerSequence, data]
-          const isCorrect = newSequence.every((val, idx) => val === currentPuzzleData.sequence[idx])
-
-          if (!isCorrect) {
-            takeDamage(20)
-            incrementFailureCount()
-            setCurrentPuzzleData((prev) => ({ ...prev, playerSequence: [] }))
-          } else if (newSequence.length === currentPuzzleData.sequence.length) {
-            completeLevel()
-          } else {
-            setCurrentPuzzleData((prev) => ({ ...prev, playerSequence: newSequence }))
-          }
-        }
-        break
-
-      case "binaryTree":
-        if (action === "traverse") {
-          const newSequence = [...currentPuzzleData.playerSequence, data]
-          setCurrentPuzzleData((prev) => ({ ...prev, playerSequence: newSequence }))
-
-          if (newSequence.length === currentPuzzleData.correctSequence.length) {
-            const isCorrect = JSON.stringify(newSequence) === JSON.stringify(currentPuzzleData.correctSequence)
-            if (isCorrect) {
-              completeLevel()
-            } else {
-              takeDamage(20)
-              incrementFailureCount()
-              setCurrentPuzzleData((prev) => ({ ...prev, playerSequence: [] }))
-            }
-          }
-        }
-        break
-
-      case "graphTraversal":
-        if (action === "move") {
-          const newPath = [...currentPuzzleData.playerPath, data]
-          setCurrentPuzzleData((prev) => ({ ...prev, playerPath: newPath, currentNode: data }))
-
-          if (data === currentPuzzleData.targetNode) {
-            const isOptimal = JSON.stringify(newPath) === JSON.stringify(currentPuzzleData.correctPath)
-            if (isOptimal) {
-              completeLevel()
-            } else {
-              takeDamage(15)
-              incrementFailureCount()
-            }
           }
         }
         break
@@ -962,12 +1014,12 @@ export default function GhostFrame() {
       case "hashTable":
         if (action === "resolve") {
           const { key, position } = data
-          const collision = currentPuzzleData.collisions.find((c) => c.key === key)
+          const collision = currentPuzzleData.collisions.find((c: any) => c.key === key)
           if (collision && position >= 0 && position < 7) {
-            setCurrentPuzzleData((prev) => ({
+            setCurrentPuzzleData((prev: any) => ({
               ...prev,
               resolved: prev.resolved + 1,
-              hashTable: prev.hashTable.map((item, idx) => (idx === position ? key : item)),
+              hashTable: prev.hashTable.map((item: any, idx: number) => (idx === position ? key : item)),
             }))
 
             if (currentPuzzleData.resolved + 1 >= currentPuzzleData.required) {
@@ -984,7 +1036,7 @@ export default function GhostFrame() {
         if (action === "step") {
           const isCorrect = data === currentPuzzleData.correctSteps[currentPuzzleData.currentStep]
           if (isCorrect) {
-            setCurrentPuzzleData((prev) => ({
+            setCurrentPuzzleData((prev: any) => ({
               ...prev,
               currentStep: prev.currentStep + 1,
               steps: [...prev.steps, data],
@@ -1002,10 +1054,10 @@ export default function GhostFrame() {
 
       case "multiAlgorithm":
         if (action === "solve") {
-          setCurrentPuzzleData((prev) => ({
+          setCurrentPuzzleData((prev: any) => ({
             ...prev,
             totalSolved: prev.totalSolved + 1,
-            challenges: prev.challenges.map((c, idx) => (idx === prev.currentChallenge ? { ...c, solved: true } : c)),
+            challenges: prev.challenges.map((c: any, idx: number) => (idx === prev.currentChallenge ? { ...c, solved: true } : c)),
             currentChallenge: prev.currentChallenge + 1,
           }))
 
@@ -1023,36 +1075,36 @@ export default function GhostFrame() {
 
           if (command === requiredCommands[currentStep]) {
             const newStep = currentStep + 1
-            setCurrentPuzzleData((prev) => ({
+            playSynthSound("success")
+            setTerminalOutput((prev) => [...prev, `[SUCCESS] Command '${command}' executed successfully.`])
+
+            setCurrentPuzzleData((prev: any) => ({
               ...prev,
               commandsExecuted: [...prev.commandsExecuted, command],
               currentStep: newStep,
             }))
 
-            setTerminalOutput((prev) => [
-              ...prev,
-              `> ${command}`,
-              `Command executed successfully. Progress: ${newStep}/${requiredCommands.length}`,
-            ])
-
             if (newStep >= requiredCommands.length) {
+              setTerminalOutput((prev) => [...prev, "[SYSTEM] ROOT ACCESS GRANTED. SYSTEM RESTORED."])
               completeLevel()
             }
           } else {
-            takeDamage(25)
+            playSynthSound("error")
+            takeDamage(10)
             incrementFailureCount()
-            setTerminalOutput((prev) => [...prev, `> ${command}`, "INVALID COMMAND. System integrity compromised."])
+            setTerminalOutput((prev) => [...prev, `[ERROR] Invalid command sequence. Expected '${requiredCommands[currentStep]}'.`])
           }
         }
         break
     }
   }
 
-  const incrementFailureCount = () => {
+  function incrementFailureCount() {
     setGameState((prev) => ({ ...prev, failureCount: prev.failureCount + 1 }))
   }
 
-  const takeDamage = (amount: number) => {
+  function takeDamage(amount: number) {
+    playSynthSound("glitch")
     setGameState((prev) => {
       const newHealth = Math.max(0, prev.health - amount)
       if (newHealth <= 0) {
@@ -1063,7 +1115,8 @@ export default function GhostFrame() {
     setGlitchIntensity((prev) => Math.min(1, prev + 0.2))
   }
 
-  const completeLevel = () => {
+  function completeLevel() {
+    playSynthSound("success")
     setGameState((prev) => {
       const newProgress = [...prev.levelProgress]
       newProgress[prev.currentLevel - 1] = 1
@@ -1085,281 +1138,224 @@ export default function GhostFrame() {
     }, 2000)
   }
 
-  const getDifficultyColor = (difficulty: string) => {
+  function getDifficultyColor(difficulty: string) {
     switch (difficulty) {
-      case "Easy":
-        return "text-green-400 border-green-400"
-      case "Medium":
-        return "text-yellow-400 border-yellow-400"
-      case "Hard":
-        return "text-orange-400 border-orange-400"
-      case "Extreme":
-        return "text-red-400 border-red-400"
-      case "Nightmare":
-        return "text-purple-400 border-purple-400"
-      case "Impossible":
-        return "text-pink-400 border-pink-400"
-      case "Legendary":
-        return "text-cyan-400 border-cyan-400"
-      default:
-        return "text-gray-400 border-gray-400"
+      case "Easy": return "text-green-400 border-green-400"
+      case "Medium": return "text-yellow-400 border-yellow-400"
+      case "Hard": return "text-orange-400 border-orange-400"
+      case "Extreme": return "text-red-400 border-red-400"
+      case "Nightmare": return "text-purple-400 border-purple-400"
+      case "Impossible": return "text-pink-400 border-pink-400"
+      case "Legendary": return "text-cyan-400 border-cyan-400"
+      default: return "text-gray-400 border-gray-400"
     }
   }
 
-  const getCorruptionIcon = (corruptionType: string) => {
+  function getCorruptionIcon(corruptionType: string) {
     switch (corruptionType) {
-      case "startup_failure":
-        return <Cpu className="w-4 h-4" />
-      case "circuit_damage":
-        return <Zap className="w-4 h-4" />
-      case "memory_leak":
-        return <Brain className="w-4 h-4" />
-      case "algorithm_decay":
-        return <Binary className="w-4 h-4" />
-      case "kernel_breach":
-        return <Skull className="w-4 h-4" />
-      case "tree_corruption":
-        return <GitBranch className="w-4 h-4" />
-      case "network_failure":
-        return <Network className="w-4 h-4" />
-      case "hash_breakdown":
-        return <Hash className="w-4 h-4" />
-      case "recursion_bomb":
-        return <Layers className="w-4 h-4" />
-      case "stack_breach":
-        return <Database className="w-4 h-4" />
-      case "pointer_chaos":
-        return <GitBranch className="w-4 h-4" />
-      case "recursion_hell":
-        return <AlertTriangle className="w-4 h-4" />
-      case "db_meltdown":
-        return <Database className="w-4 h-4" />
-      case "protocol_decay":
-        return <Network className="w-4 h-4" />
-      case "total_collapse":
-        return <Skull className="w-4 h-4" />
-      default:
-        return <Bug className="w-4 h-4" />
+      case "startup_failure": return <Cpu className="w-4 h-4" />
+      case "circuit_damage": return <Zap className="w-4 h-4" />
+      case "memory_leak": return <Brain className="w-4 h-4" />
+      case "algorithm_decay": return <Binary className="w-4 h-4" />
+      case "kernel_breach": return <Skull className="w-4 h-4" />
+      case "tree_corruption": return <GitBranch className="w-4 h-4" />
+      case "network_failure": return <Network className="w-4 h-4" />
+      case "hash_breakdown": return <Hash className="w-4 h-4" />
+      case "recursion_bomb": return <Layers className="w-4 h-4" />
+      case "stack_breach": return <Database className="w-4 h-4" />
+      case "pointer_chaos": return <GitBranch className="w-4 h-4" />
+      case "recursion_hell": return <AlertTriangle className="w-4 h-4" />
+      case "db_meltdown": return <Database className="w-4 h-4" />
+      case "protocol_decay": return <Network className="w-4 h-4" />
+      case "total_collapse": return <Skull className="w-4 h-4" />
+      default: return <Bug className="w-4 h-4" />
     }
   }
 
-  const getEnemyIcon = (type: string) => {
+  function getEnemyIcon(type: string) {
     switch (type) {
-      case "scanner":
-        return <Eye className="w-full h-full" />
-      case "hunter":
-        return <Zap className="w-full h-full" />
-      case "corruptor":
-        return <Skull className="w-full h-full" />
-      case "virus":
-        return <AlertTriangle className="w-full h-full" />
-      case "phantom":
-        return <Binary className="w-full h-full" />
-      default:
-        return <Eye className="w-full h-full" />
+      case "scanner": return <Eye className="w-full h-full" />
+      case "hunter": return <Zap className="w-full h-full" />
+      case "corruptor": return <Skull className="w-full h-full" />
+      case "virus": return <AlertTriangle className="w-full h-full" />
+      case "phantom": return <Binary className="w-full h-full" />
+      default: return <Eye className="w-full h-full" />
     }
   }
 
-  const getEnemyColor = (type: string) => {
+  function getEnemyColor(type: string) {
     switch (type) {
-      case "scanner":
-        return "bg-blue-500 shadow-blue-500/50"
-      case "hunter":
-        return "bg-red-500 shadow-red-500/50"
-      case "corruptor":
-        return "bg-purple-500 shadow-purple-500/50"
-      case "virus":
-        return "bg-green-500 shadow-green-500/50"
-      case "phantom":
-        return "bg-cyan-500 shadow-cyan-500/50"
-      default:
-        return "bg-red-500 shadow-red-500/50"
+      case "scanner": return "bg-blue-500 shadow-blue-500/50"
+      case "hunter": return "bg-red-500 shadow-red-500/50"
+      case "corruptor": return "bg-purple-500 shadow-purple-500/50"
+      case "virus": return "bg-green-500 shadow-green-500/50"
+      case "phantom": return "bg-cyan-500 shadow-cyan-500/50"
+      default: return "bg-red-500 shadow-red-500/50"
     }
   }
 
   return (
-    <>
-      <Head>
-        <title>{getPageTitle()}</title>
-        <meta
-          name="description"
-          content="GHOSTFRAME - A horror-themed programming puzzle game with 15 levels of system corruption challenges"
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link
-          rel="icon"
-          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' fontSize='90'%3E💀%3C/text%3E%3C/svg%3E"
-        />
-        <link
-          rel="shortcut icon"
-          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' fontSize='90'%3E💀%3C/text%3E%3C/svg%3E"
-        />
-        <link
-          rel="apple-touch-icon"
-          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' fontSize='90'%3E💀%3C/text%3E%3C/svg%3E"
-        />
-      </Head>
+    <div className="min-h-screen bg-black text-green-400 font-mono overflow-hidden relative">
+      {/* Glitch Overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none z-50 mix-blend-screen"
+        style={{
+          background: `linear-gradient(45deg, 
+            rgba(255,0,255,${gameState.currentScreen === "intro" ? glitchIntensity * 0.05 : glitchIntensity * 0.1}) 0%, 
+            transparent 25%, 
+            rgba(0,255,255,${gameState.currentScreen === "intro" ? glitchIntensity * 0.05 : glitchIntensity * 0.1}) 50%, 
+            transparent 75%, 
+            rgba(255,255,0,${gameState.currentScreen === "intro" ? glitchIntensity * 0.05 : glitchIntensity * 0.1}) 100%)`,
+          filter: `blur(${gameState.currentScreen === "intro" ? glitchIntensity * 0.5 : glitchIntensity}px) contrast(${1 + (gameState.currentScreen === "intro" ? glitchIntensity * 0.5 : glitchIntensity)})`,
+          animation: `glitch 0.2s infinite`,
+        }}
+      />
 
-      <div className="min-h-screen bg-black text-green-400 font-mono overflow-hidden relative">
-        {/* Glitch Overlay */}
+      {/* Enemies */}
+      {gameState.enemyPositions.map((enemy) => (
         <div
-          className="fixed inset-0 pointer-events-none z-50 mix-blend-screen"
+          key={enemy.id}
+          className={`fixed w-8 h-8 rounded-full z-40 animate-pulse shadow-lg ${getEnemyColor(enemy.type)}`}
           style={{
-            background: `linear-gradient(45deg, 
-              rgba(255,0,255,${gameState.currentScreen === "intro" ? glitchIntensity * 0.05 : glitchIntensity * 0.1}) 0%, 
-              transparent 25%, 
-              rgba(0,255,255,${gameState.currentScreen === "intro" ? glitchIntensity * 0.05 : glitchIntensity * 0.1}) 50%, 
-              transparent 75%, 
-              rgba(255,255,0,${gameState.currentScreen === "intro" ? glitchIntensity * 0.05 : glitchIntensity * 0.1}) 100%)`,
-            filter: `blur(${gameState.currentScreen === "intro" ? glitchIntensity * 0.5 : glitchIntensity}px) contrast(${1 + (gameState.currentScreen === "intro" ? glitchIntensity * 0.5 : glitchIntensity)})`,
-            animation: `glitch ${0.1 + Math.random() * 0.1}s infinite`,
+            left: `${enemy.x}%`,
+            top: `${enemy.y}%`,
+            filter: "blur(1px)",
+            transition: "all 1.5s ease-in-out",
           }}
-        />
+        >
+          {getEnemyIcon(enemy.type)}
+        </div>
+      ))}
 
-        {/* Enemies */}
-        {gameState.enemyPositions.map((enemy) => (
-          <div
-            key={enemy.id}
-            className={`fixed w-8 h-8 rounded-full z-40 animate-pulse shadow-lg ${getEnemyColor(enemy.type)}`}
-            style={{
-              left: `${enemy.x}%`,
-              top: `${enemy.y}%`,
-              filter: "blur(1px)",
-              transition: "all 1.5s ease-in-out",
-            }}
-          >
-            {getEnemyIcon(enemy.type)}
+      {gameState.currentScreen === "intro" && (
+        <div className="flex flex-col items-center justify-center min-h-screen relative z-10 p-4">
+          <div className="relative z-20 mb-8 animate-pulse">
+            <Skull className="w-20 h-20 mx-auto mb-6 text-red-400 drop-shadow-lg" />
+            <h1 className="text-5xl font-bold mb-4 text-green-400 drop-shadow-lg glitch-text">GHOSTFRAME</h1>
+            <p className="text-xl text-gray-200 mb-2 drop-shadow-md font-semibold">MULTI-LEVEL CORRUPTION PROTOCOL</p>
+            <p className="text-base text-gray-300 mt-4 drop-shadow-md">15 Levels • Escalating System Failures</p>
           </div>
-        ))}
 
-        {/* Intro Screen */}
-        {gameState.currentScreen === "intro" && (
-          <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center relative z-60">
-            {/* Background overlay for better text visibility */}
-            <div className="absolute inset-0 bg-black/70 z-10"></div>
+          <Card className="relative z-20 bg-gray-900/95 border-green-400/50 p-8 max-w-lg backdrop-blur-sm shadow-2xl">
+            <div className="space-y-6">
+              <p className="text-gray-200 text-base leading-relaxed">
+                Navigate through <span className="text-green-400 font-bold">15 increasingly corrupted</span> system
+                levels. Each level presents unique challenges with escalating AI threats and progressive system
+                corruption.
+              </p>
+              <p className="text-gray-300 text-sm">
+                <span className="text-red-400">⚠</span> Repair algorithms, restore data structures, and survive the
+                digital nightmare.
+              </p>
 
-            <div className="relative z-20 mb-8 animate-pulse">
-              <Skull className="w-20 h-20 mx-auto mb-6 text-red-400 drop-shadow-lg" />
-              <h1 className="text-5xl font-bold mb-4 text-green-400 drop-shadow-lg glitch-text">GHOSTFRAME</h1>
-              <p className="text-xl text-gray-200 mb-2 drop-shadow-md font-semibold">MULTI-LEVEL CORRUPTION PROTOCOL</p>
-              <p className="text-base text-gray-300 mt-4 drop-shadow-md">15 Levels • Escalating System Failures</p>
-            </div>
-
-            <Card className="relative z-20 bg-gray-900/95 border-green-400/50 p-8 max-w-lg backdrop-blur-sm shadow-2xl">
-              <div className="space-y-6">
-                <p className="text-gray-200 text-base leading-relaxed">
-                  Navigate through <span className="text-green-400 font-bold">15 increasingly corrupted</span> system
-                  levels. Each level presents unique challenges with escalating AI threats and progressive system
-                  corruption.
-                </p>
-                <p className="text-gray-300 text-sm">
-                  <span className="text-red-400">⚠</span> Repair algorithms, restore data structures, and survive the
-                  digital nightmare.
-                </p>
-
-                <div className="pt-4 border-t border-gray-700">
-                  <Button
-                    onClick={() => setGameState((prev) => ({ ...prev, currentScreen: "levelSelect" }))}
-                    className="w-full bg-green-600 hover:bg-green-700 text-black font-bold text-lg py-3 shadow-lg hover:shadow-green-500/25 transition-all duration-300"
-                  >
-                    ACCESS LEVEL MATRIX
-                  </Button>
-                </div>
-
-                <div className="flex justify-center space-x-6 text-xs text-gray-400 pt-2">
-                  <div className="flex items-center gap-1">
-                    <Skull className="w-3 h-3" />
-                    <span>Horror Theme</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Brain className="w-3 h-3" />
-                    <span>Logic Puzzles</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Zap className="w-3 h-3" />
-                    <span>Real-time Action</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* Level Selection Screen */}
-        {gameState.currentScreen === "levelSelect" && (
-          <div className="p-8 min-h-screen">
-            <div className="max-w-7xl mx-auto">
-              <h2 className="text-3xl font-bold mb-8 text-center text-green-400">CORRUPTION LEVELS</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                {LEVELS.map((level) => {
-                  const isUnlocked = level.id === 1 || gameState.levelProgress[level.id - 2] === 1
-                  const isCompleted = gameState.levelProgress[level.id - 1] === 1
-
-                  return (
-                    <Card
-                      key={level.id}
-                      className={`p-4 transition-all duration-300 ${
-                        isUnlocked
-                          ? `bg-gray-900/80 border-green-400/50 hover:border-green-400 cursor-pointer hover:scale-105`
-                          : `bg-gray-900/40 border-gray-600/30 cursor-not-allowed`
-                      } ${isCompleted ? "border-blue-400/50 bg-blue-900/20" : ""}`}
-                      onClick={() => isUnlocked && initializeLevel(level.id)}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          {getCorruptionIcon(level.corruptionType)}
-                          <h3 className="text-sm font-bold text-green-400">L{level.id}</h3>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {isCompleted && <Shield className="w-3 h-3 text-blue-400" />}
-                          {!isUnlocked && <Lock className="w-3 h-3 text-gray-500" />}
-                        </div>
-                      </div>
-
-                      <h4 className="text-white font-semibold mb-2 text-xs leading-tight">{level.name}</h4>
-                      <p className="text-gray-400 text-xs mb-3 line-clamp-3 leading-tight">{level.description}</p>
-
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span>Difficulty:</span>
-                          <span className={getDifficultyColor(level.difficulty)}>{level.difficulty}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Time:</span>
-                          <span className="text-yellow-400">{level.timeLimit}s</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Threats:</span>
-                          <span className="text-red-400">{level.enemyCount}</span>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-
-              <div className="mt-8 text-center">
-                <div className="mb-4">
-                  <span className="text-gray-400">Progress: </span>
-                  <span className="text-green-400">
-                    {gameState.levelProgress.filter((p) => p === 1).length}/{LEVELS.length} Levels Completed
-                  </span>
-                </div>
+              <div className="pt-4 border-t border-gray-700">
                 <Button
-                  onClick={() => setGameState((prev) => ({ ...prev, currentScreen: "intro" }))}
-                  variant="outline"
-                  className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                  onClick={() => {
+                    playSynthSound("click")
+                    setGameState((prev) => ({ ...prev, currentScreen: "levelSelect" }))
+                  }}
+                  onMouseEnter={() => playSynthSound("hover")}
+                  className="w-full bg-green-600 hover:bg-green-700 text-black font-bold text-lg py-3 shadow-lg hover:shadow-green-500/25 transition-all duration-300"
                 >
-                  RETURN TO MAIN MENU
+                  ACCESS LEVEL MATRIX
                 </Button>
               </div>
+
+              <div className="flex justify-center space-x-6 text-xs text-gray-400 pt-2">
+                <div className="flex items-center gap-1">
+                  <Skull className="w-3 h-3" />
+                  <span>Horror Theme</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Brain className="w-3 h-3" />
+                  <span>Logic Puzzles</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  <span>Real-time Action</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Level Selection Screen */}
+      {gameState.currentScreen === "levelSelect" && (
+        <div className="p-8 min-h-screen">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-3xl font-bold mb-8 text-center text-green-400">CORRUPTION LEVELS</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {LEVELS.map((level) => {
+                const isUnlocked = level.id === 1 || gameState.levelProgress[level.id - 2] === 1
+                const isCompleted = gameState.levelProgress[level.id - 1] === 1
+
+                return (
+                  <Card
+                    key={level.id}
+                    className={`p - 4 transition - all duration - 300 ${isUnlocked
+                      ? `bg-gray-900/80 border-green-400/50 hover:border-green-400 cursor-pointer hover:scale-105`
+                      : `bg-gray-900/40 border-gray-600/30 cursor-not-allowed`
+                      } ${isCompleted ? "border-blue-400/50 bg-blue-900/20" : ""} `}
+                    onClick={() => isUnlocked && initializeLevel(level.id)}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        {getCorruptionIcon(level.corruptionType)}
+                        <h3 className="text-sm font-bold text-green-400">L{level.id}</h3>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {isCompleted && <Shield className="w-3 h-3 text-blue-400" />}
+                        {!isUnlocked && <Lock className="w-3 h-3 text-gray-500" />}
+                      </div>
+                    </div>
+
+                    <h4 className="text-white font-semibold mb-2 text-xs leading-tight">{level.name}</h4>
+                    <p className="text-gray-400 text-xs mb-3 line-clamp-3 leading-tight">{level.description}</p>
+
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span>Difficulty:</span>
+                        <span className={getDifficultyColor(level.difficulty)}>{level.difficulty}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Time:</span>
+                        <span className="text-yellow-400">{level.timeLimit}s</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Threats:</span>
+                        <span className="text-red-400">{level.enemyCount}</span>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+
+            <div className="mt-8 text-center">
+              <div className="mb-4">
+                <span className="text-gray-400">Progress: </span>
+                <span className="text-green-400">
+                  {gameState.levelProgress.filter((p) => p === 1).length}/{LEVELS.length} Levels Completed
+                </span>
+              </div>
+              <Button
+                onClick={() => setGameState((prev) => ({ ...prev, currentScreen: "intro" }))}
+                variant="outline"
+                className="border-gray-600 text-gray-400 hover:bg-gray-800"
+              >
+                RETURN TO MAIN MENU
+              </Button>
             </div>
           </div>
-        )}
+        </div>
+      )
+      }
 
-        {/* Game Screen */}
-        {gameState.currentScreen === "game" && currentLevelConfig && (
+      {/* Game Screen */}
+      {
+        gameState.currentScreen === "game" && currentLevelConfig && (
           <div className="p-4 min-h-screen">
             {/* HUD */}
             <div className="flex justify-between items-center mb-4 bg-gray-900/50 p-3 rounded border border-green-400/30">
@@ -1369,6 +1365,9 @@ export default function GhostFrame() {
                   <span>LEVEL {gameState.currentLevel}</span>
                 </div>
                 <span>HEALTH: {gameState.health}%</span>
+                <span className={gameState.stealthEnergy < 20 ? "text-red-400 animate-pulse" : "text-blue-400"}>
+                  ENERGY: {Math.floor(gameState.stealthEnergy)}%
+                </span>
                 <span className={gameState.timerExtensions > 0 ? "text-yellow-400" : ""}>
                   TIME: {Math.floor(gameState.timeRemaining / 60)}:
                   {(gameState.timeRemaining % 60).toString().padStart(2, "0")}
@@ -1409,12 +1408,22 @@ export default function GhostFrame() {
                 )}
 
                 <Button
-                  onClick={() => setGameState((prev) => ({ ...prev, playerHidden: !prev.playerHidden }))}
+                  onClick={() => {
+                    playSynthSound("click")
+                    setGameState((prev) => ({ ...prev, playerHidden: !prev.playerHidden }))
+                  }}
+                  onMouseEnter={() => playSynthSound("hover")}
+                  disabled={gameState.stealthEnergy <= 0 && !gameState.playerHidden}
                   variant="outline"
                   size="sm"
-                  className={`${gameState.playerHidden ? "bg-blue-600" : "bg-gray-600"} text-white`}
+                  className={`${gameState.playerHidden
+                    ? "bg-blue-600 animate-pulse border-blue-400"
+                    : gameState.stealthEnergy <= 0
+                      ? "bg-gray-900 text-gray-600 border-gray-800 cursor-not-allowed"
+                      : "bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-500"
+                    } transition - all duration - 300 min - w - [100px]`}
                 >
-                  {gameState.playerHidden ? "VISIBLE" : "HIDDEN"}
+                  {gameState.playerHidden ? "HIDDEN" : "STEALTH"}
                 </Button>
                 <Button
                   onClick={() => setGameState((prev) => ({ ...prev, currentScreen: "levelSelect" }))}
@@ -1453,641 +1462,617 @@ export default function GhostFrame() {
                 <h3 className="text-xl font-bold mb-2 text-green-400">{currentLevelConfig.name}</h3>
                 <p className="text-gray-400 mb-4">{currentLevelConfig.description}</p>
 
-                {/* Stack Overflow Puzzle */}
-                {currentLevelConfig.puzzleType === "stackOverflow" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Execute stack operations in sequence:</p>
-                    <div className="mb-4">
-                      <div className="bg-gray-800 p-4 rounded border border-gray-600">
-                        <div className="text-center mb-2">
-                          <h4 className="font-bold">Stack State</h4>
-                          <div className="text-lg">[{currentPuzzleData.stack?.join(", ")}]</div>
-                        </div>
-                        <div className="text-center mb-2">
-                          <span className="text-yellow-400">
-                            Next Operation:{" "}
-                            {currentPuzzleData.operations?.[currentPuzzleData.currentOperation] || "Complete"}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <Button
-                            onClick={() => handlePuzzleAction("execute")}
-                            className="bg-green-600 hover:bg-green-700 text-black"
-                            disabled={currentPuzzleData.currentOperation >= currentPuzzleData.operations?.length}
-                          >
-                            EXECUTE OPERATION
-                          </Button>
+                {/* Database Corruption */}
+                {
+                  currentLevelConfig.puzzleType === "databaseCorruption" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Execute SQL queries to restore database integrity:</p>
+                      <div className="mb-4">
+                        <div className="bg-gray-800 p-4 rounded border border-gray-600">
+                          <h4 className="font-bold mb-2">Database Tables</h4>
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <div className="font-bold">Users</div>
+                              {currentPuzzleData.tables?.users?.map((user: any) => (
+                                <div key={user.id}>
+                                  {user.id}: {user.name}, {user.age}
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <div className="font-bold">Orders</div>
+                              {currentPuzzleData.tables?.orders?.map((order: any) => (
+                                <div key={order.id}>
+                                  {order.id}: User {order.user_id}, {order.product}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-center text-sm">
-                      Progress: {currentPuzzleData.currentOperation}/{currentPuzzleData.operations?.length}
-                    </div>
-                  </div>
-                )}
-
-                {/* Linked List Corruption */}
-                {currentLevelConfig.puzzleType === "linkedListCorruption" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Reconnect the broken linked list pointers:</p>
-                    <div className="grid grid-cols-4 gap-4 mb-4">
-                      {currentPuzzleData.nodes?.map((node: any) => (
-                        <div key={node.id} className="bg-gray-800 p-3 rounded border border-gray-600 text-center">
-                          <div className="font-bold text-lg">{node.value}</div>
-                          <div className="text-xs text-gray-400">Node {node.id}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      <p className="text-sm">Click connections to restore: A→B→C→D</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {currentPuzzleData.correctConnections?.map((conn: any, index: number) => (
-                          <Button
-                            key={index}
-                            onClick={() => handlePuzzleAction("connect", conn)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                            size="sm"
-                          >
-                            {conn.from}→{conn.to}
-                          </Button>
+                      <div className="space-y-2">
+                        {currentPuzzleData.queries?.map((query: string, index: number) => (
+                          <div key={index} className="bg-gray-800 p-3 rounded">
+                            <code className="text-green-400 text-sm">{query}</code>
+                            <Button
+                              onClick={() => handlePuzzleAction("query")}
+                              className="ml-4 bg-green-600 hover:bg-green-700 text-black"
+                              size="sm"
+                              disabled={index !== currentPuzzleData.currentQuery}
+                            >
+                              EXECUTE
+                            </Button>
+                          </div>
                         ))}
                       </div>
-                    </div>
-                    <div className="text-center">
-                      Connections: {currentPuzzleData.playerConnections?.length}/
-                      {currentPuzzleData.correctConnections?.length}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recursion Loop */}
-                {currentLevelConfig.puzzleType === "recursionLoop" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Trace through the recursive factorial function:</p>
-                    <div className="space-y-2 mb-4">
-                      {currentPuzzleData.recursionSteps?.map((step: string, index: number) => (
-                        <Button
-                          key={index}
-                          onClick={() => handlePuzzleAction("step", step)}
-                          className={`w-full text-left ${
-                            index === currentPuzzleData.currentStep
-                              ? "bg-green-600 hover:bg-green-700"
-                              : index < currentPuzzleData.currentStep
-                                ? "bg-blue-600"
-                                : "bg-gray-600 hover:bg-gray-700"
-                          } text-white`}
-                          disabled={index !== currentPuzzleData.currentStep}
-                        >
-                          {step}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="text-center">
-                      Step: {currentPuzzleData.currentStep + 1}/{currentPuzzleData.recursionSteps?.length}
-                    </div>
-                  </div>
-                )}
-
-                {/* Database Corruption */}
-                {currentLevelConfig.puzzleType === "databaseCorruption" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Execute SQL queries to restore database integrity:</p>
-                    <div className="mb-4">
-                      <div className="bg-gray-800 p-4 rounded border border-gray-600">
-                        <h4 className="font-bold mb-2">Database Tables</h4>
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div>
-                            <div className="font-bold">Users</div>
-                            {currentPuzzleData.tables?.users?.map((user: any) => (
-                              <div key={user.id}>
-                                {user.id}: {user.name}, {user.age}
-                              </div>
-                            ))}
-                          </div>
-                          <div>
-                            <div className="font-bold">Orders</div>
-                            {currentPuzzleData.tables?.orders?.map((order: any) => (
-                              <div key={order.id}>
-                                {order.id}: User {order.user_id}, {order.product}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="mt-4 text-center">
+                        Progress: {currentPuzzleData.solved}/{currentPuzzleData.queries?.length}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      {currentPuzzleData.queries?.map((query: string, index: number) => (
-                        <div key={index} className="bg-gray-800 p-3 rounded">
-                          <code className="text-green-400 text-sm">{query}</code>
-                          <Button
-                            onClick={() => handlePuzzleAction("query")}
-                            className="ml-4 bg-green-600 hover:bg-green-700 text-black"
-                            size="sm"
-                            disabled={index !== currentPuzzleData.currentQuery}
-                          >
-                            EXECUTE
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 text-center">
-                      Progress: {currentPuzzleData.solved}/{currentPuzzleData.queries?.length}
-                    </div>
-                  </div>
-                )}
+                  )
+                }
 
                 {/* Network Protocol */}
-                {currentLevelConfig.puzzleType === "networkProtocol" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Repair corrupted OSI layers:</p>
-                    <div className="space-y-2 mb-4">
-                      {currentPuzzleData.layers?.map((layer: string, index: number) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded border ${
-                            currentPuzzleData.corruptedLayers?.includes(index)
+                {
+                  currentLevelConfig.puzzleType === "networkProtocol" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Repair corrupted OSI layers:</p>
+                      <div className="space-y-2 mb-4">
+                        {currentPuzzleData.layers?.map((layer: string, index: number) => (
+                          <div
+                            key={index}
+                            className={`p - 3 rounded border ${currentPuzzleData.corruptedLayers?.includes(index)
                               ? currentPuzzleData.repairedLayers?.includes(index)
                                 ? "bg-green-800 border-green-400"
                                 : "bg-red-800 border-red-400"
                               : "bg-gray-800 border-gray-600"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span>
-                              Layer {index + 1}: {layer}
-                            </span>
-                            {currentPuzzleData.corruptedLayers?.includes(index) &&
-                              !currentPuzzleData.repairedLayers?.includes(index) && (
-                                <Button
-                                  onClick={() => handlePuzzleAction("repair", index)}
-                                  className="bg-yellow-600 hover:bg-yellow-700 text-black"
-                                  size="sm"
-                                >
-                                  REPAIR
-                                </Button>
+                              } `}
+                          >
+                            <div className="flex justify-between items-center">
+                              <span>
+                                Layer {index + 1}: {layer}
+                              </span>
+                              {currentPuzzleData.corruptedLayers?.includes(index) &&
+                                !currentPuzzleData.repairedLayers?.includes(index) && (
+                                  <Button
+                                    onClick={() => handlePuzzleAction("repair", index)}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-black"
+                                    size="sm"
+                                  >
+                                    REPAIR
+                                  </Button>
+                                )}
+                              {currentPuzzleData.repairedLayers?.includes(index) && (
+                                <span className="text-green-400">✓ REPAIRED</span>
                               )}
-                            {currentPuzzleData.repairedLayers?.includes(index) && (
-                              <span className="text-green-400">✓ REPAIRED</span>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-center">
-                      Repaired: {currentPuzzleData.repairedLayers?.length}/{currentPuzzleData.corruptedLayers?.length}
-                    </div>
-                  </div>
-                )}
-
-                {/* Algorithm Reconstruction Puzzle (Fixed Level 4) */}
-                {currentLevelConfig.puzzleType === "algorithmReconstruction" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Reconstruct the bubble sort algorithm by arranging the lines in correct order:
-                    </p>
-                    <div className="space-y-2 mb-4">
-                      {currentPuzzleData.currentOrder?.map((lineIndex: number, index: number) => (
-                        <div
-                          key={index}
-                          className="bg-gray-800 p-3 rounded border border-gray-600 cursor-move hover:border-green-400/50 transition-colors"
-                          draggable
-                          onDragStart={(e) => e.dataTransfer.setData("text/plain", index.toString())}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault()
-                            const dragIndex = Number.parseInt(e.dataTransfer.getData("text/plain"))
-                            const newOrder = [...currentPuzzleData.currentOrder]
-                            const draggedItem = newOrder[dragIndex]
-                            newOrder.splice(dragIndex, 1)
-                            newOrder.splice(index, 0, draggedItem)
-                            handlePuzzleAction("reorder", newOrder)
-                          }}
-                        >
-                          <code className="text-green-400 text-sm">{currentPuzzleData.algorithm?.[lineIndex]}</code>
-                        </div>
-                      ))}
-                    </div>
-                    <Button
-                      onClick={() => handlePuzzleAction("check")}
-                      className="bg-green-600 hover:bg-green-700 text-black font-bold"
-                    >
-                      COMPILE ALGORITHM
-                    </Button>
-                  </div>
-                )}
-
-                {/* Binary Tree Traversal */}
-                {currentLevelConfig.puzzleType === "binaryTree" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Perform in-order traversal of the corrupted tree structure:
-                    </p>
-                    <div className="mb-4 text-center">
-                      <div className="inline-block bg-gray-800 p-4 rounded">
-                        <div className="text-center mb-2">
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 50)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white m-1"
-                            size="sm"
-                          >
-                            50
-                          </Button>
-                        </div>
-                        <div className="flex justify-center gap-8 mb-2">
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 30)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            30
-                          </Button>
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 70)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            70
-                          </Button>
-                        </div>
-                        <div className="flex justify-center gap-4">
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 20)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            20
-                          </Button>
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 40)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            40
-                          </Button>
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 60)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            60
-                          </Button>
-                          <Button
-                            onClick={() => handlePuzzleAction("traverse", 80)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            80
-                          </Button>
-                        </div>
+                        ))}
+                      </div>
+                      <div className="text-center">
+                        Repaired: {currentPuzzleData.repairedLayers?.length}/{currentPuzzleData.corruptedLayers?.length}
                       </div>
                     </div>
-                    <div className="text-center">
-                      <div>Expected: {currentPuzzleData.correctSequence?.join(" → ")}</div>
-                      <div>Your path: {currentPuzzleData.playerSequence?.join(" → ")}</div>
+                  )
+                }
+
+                {/* Algorithm Reconstruction Puzzle (Fixed Level 4) */}
+                {
+                  currentLevelConfig.puzzleType === "algorithmReconstruction" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Reconstruct the bubble sort algorithm by arranging the lines in correct order:
+                      </p>
+                      <div className="space-y-2 mb-4">
+                        {currentPuzzleData.currentOrder?.map((lineIndex: number, index: number) => (
+                          <div
+                            key={index}
+                            className="bg-gray-800 p-3 rounded border border-gray-600 cursor-move hover:border-green-400/50 transition-colors"
+                            draggable
+                            onDragStart={(e) => e.dataTransfer.setData("text/plain", index.toString())}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              const dragIndex = Number.parseInt(e.dataTransfer.getData("text/plain"))
+                              const newOrder = [...currentPuzzleData.currentOrder]
+                              const draggedItem = newOrder[dragIndex]
+                              newOrder.splice(dragIndex, 1)
+                              newOrder.splice(index, 0, draggedItem)
+                              handlePuzzleAction("reorder", newOrder)
+                            }}
+                          >
+                            <code className="text-green-400 text-sm">{currentPuzzleData.algorithm?.[lineIndex]}</code>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        onClick={() => handlePuzzleAction("check")}
+                        className="bg-green-600 hover:bg-green-700 text-black font-bold"
+                      >
+                        COMPILE ALGORITHM
+                      </Button>
                     </div>
-                  </div>
-                )}
+                  )
+                }
+
+                {/* Binary Tree Traversal */}
+                {
+                  currentLevelConfig.puzzleType === "binaryTree" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Perform in-order traversal of the corrupted tree structure:
+                      </p>
+                      <div className="mb-4 text-center">
+                        <div className="inline-block bg-gray-800 p-4 rounded">
+                          <div className="text-center mb-2">
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 50)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white m-1"
+                              size="sm"
+                            >
+                              50
+                            </Button>
+                          </div>
+                          <div className="flex justify-center gap-8 mb-2">
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 30)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              size="sm"
+                            >
+                              30
+                            </Button>
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 70)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              size="sm"
+                            >
+                              70
+                            </Button>
+                          </div>
+                          <div className="flex justify-center gap-4">
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 20)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              size="sm"
+                            >
+                              20
+                            </Button>
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 40)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              size="sm"
+                            >
+                              40
+                            </Button>
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 60)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              size="sm"
+                            >
+                              60
+                            </Button>
+                            <Button
+                              onClick={() => handlePuzzleAction("traverse", 80)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              size="sm"
+                            >
+                              80
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div>Expected: {currentPuzzleData.correctSequence?.join(" → ")}</div>
+                        <div>Your path: {currentPuzzleData.playerSequence?.join(" → ")}</div>
+                      </div>
+                    </div>
+                  )
+                }
 
                 {/* Graph Traversal */}
-                {currentLevelConfig.puzzleType === "graphTraversal" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Navigate through the corrupted network topology:</p>
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      {Object.keys(currentPuzzleData.graph || {}).map((node) => (
-                        <Button
-                          key={node}
-                          onClick={() => handlePuzzleAction("move", node)}
-                          className={`${
-                            currentPuzzleData.currentNode === node
+                {
+                  currentLevelConfig.puzzleType === "graphTraversal" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Navigate through the corrupted network topology:</p>
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        {Object.keys(currentPuzzleData.graph || {}).map((node) => (
+                          <Button
+                            key={node}
+                            onClick={() => handlePuzzleAction("move", node)}
+                            className={`${currentPuzzleData.currentNode === node
                               ? "bg-green-600 hover:bg-green-700"
                               : "bg-gray-600 hover:bg-gray-700"
-                          } text-white`}
-                          disabled={
-                            currentPuzzleData.currentNode !== node &&
-                            !currentPuzzleData.graph?.[currentPuzzleData.currentNode]?.includes(node)
-                          }
-                        >
-                          {node}
-                        </Button>
-                      ))}
+                              } text - white`}
+                            disabled={
+                              currentPuzzleData.currentNode !== node &&
+                              !currentPuzzleData.graph?.[currentPuzzleData.currentNode]?.includes(node)
+                            }
+                          >
+                            {node}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="text-center">
+                        <div>Current: {currentPuzzleData.currentNode}</div>
+                        <div>Path: {currentPuzzleData.playerPath?.join(" → ")}</div>
+                        <div>Target: {currentPuzzleData.targetNode}</div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <div>Current: {currentPuzzleData.currentNode}</div>
-                      <div>Path: {currentPuzzleData.playerPath?.join(" → ")}</div>
-                      <div>Target: {currentPuzzleData.targetNode}</div>
-                    </div>
-                  </div>
-                )}
+                  )
+                }
 
                 {/* Hash Table */}
-                {currentLevelConfig.puzzleType === "hashTable" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Resolve hash collisions using linear probing:</p>
-                    <div className="grid grid-cols-7 gap-2 mb-4">
-                      {currentPuzzleData.hashTable?.map((item: string | null, index: number) => (
-                        <div key={index} className="bg-gray-800 p-2 text-center border border-gray-600 rounded">
-                          <div className="text-xs text-gray-400">[{index}]</div>
-                          <div className="text-sm">{item || "null"}</div>
-                        </div>
-                      ))}
+                {
+                  currentLevelConfig.puzzleType === "hashTable" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Resolve hash collisions using linear probing:</p>
+                      <div className="grid grid-cols-7 gap-2 mb-4">
+                        {currentPuzzleData.hashTable?.map((item: string | null, index: number) => (
+                          <div key={index} className="bg-gray-800 p-2 text-center border border-gray-600 rounded">
+                            <div className="text-xs text-gray-400">[{index}]</div>
+                            <div className="text-sm">{item || "null"}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        {currentPuzzleData.collisions?.map((collision: any, index: number) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-sm">
+                              {collision.key} (hash: {collision.hash})
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="6"
+                              placeholder="Position"
+                              className="bg-gray-800 text-green-400 p-1 rounded w-20"
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                  const position = Number.parseInt((e.target as HTMLInputElement).value)
+                                  handlePuzzleAction("resolve", { key: collision.key, position })
+                                }
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 text-center">
+                        Progress: {currentPuzzleData.resolved}/{currentPuzzleData.required}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {currentPuzzleData.collisions?.map((collision: any, index: number) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <span className="text-sm">
-                            {collision.key} (hash: {collision.hash})
-                          </span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="6"
-                            placeholder="Position"
-                            className="bg-gray-800 text-green-400 p-1 rounded w-20"
-                            onKeyPress={(e) => {
-                              if (e.key === "Enter") {
-                                const position = Number.parseInt((e.target as HTMLInputElement).value)
-                                handlePuzzleAction("resolve", { key: collision.key, position })
-                              }
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 text-center">
-                      Progress: {currentPuzzleData.resolved}/{currentPuzzleData.required}
-                    </div>
-                  </div>
-                )}
+                  )
+                }
 
                 {/* Dynamic Programming */}
-                {currentLevelConfig.puzzleType === "dynamicProgramming" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Solve recursive overflow using memoization:</p>
-                    <div className="space-y-2 mb-4">
-                      {currentPuzzleData.correctSteps?.map((step: string, index: number) => (
-                        <Button
-                          key={index}
-                          onClick={() => handlePuzzleAction("step", step)}
-                          className={`w-full text-left ${
-                            index === currentPuzzleData.currentStep
+                {
+                  currentLevelConfig.puzzleType === "dynamicProgramming" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Solve recursive overflow using memoization:</p>
+                      <div className="space-y-2 mb-4">
+                        {currentPuzzleData.correctSteps?.map((step: string, index: number) => (
+                          <Button
+                            key={index}
+                            onClick={() => handlePuzzleAction("step", step)}
+                            className={`w - full text - left ${index === currentPuzzleData.currentStep
                               ? "bg-green-600 hover:bg-green-700"
                               : index < currentPuzzleData.currentStep
                                 ? "bg-blue-600"
                                 : "bg-gray-600 hover:bg-gray-700"
-                          } text-white`}
-                          disabled={index !== currentPuzzleData.currentStep}
-                        >
-                          {step}
-                        </Button>
-                      ))}
+                              } text - white`}
+                            disabled={index !== currentPuzzleData.currentStep}
+                          >
+                            {step}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="text-center">
+                        Step: {currentPuzzleData.currentStep + 1}/{currentPuzzleData.correctSteps?.length}
+                      </div>
                     </div>
-                    <div className="text-center">
-                      Step: {currentPuzzleData.currentStep + 1}/{currentPuzzleData.correctSteps?.length}
-                    </div>
-                  </div>
-                )}
+                  )
+                }
 
                 {/* Multi-Algorithm Challenge */}
-                {currentLevelConfig.puzzleType === "multiAlgorithm" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Complete all system restoration challenges:</p>
-                    <div className="space-y-4">
-                      {currentPuzzleData.challenges?.map((challenge: any, index: number) => (
-                        <Card key={index} className="bg-gray-800 p-4">
-                          <h4 className="font-bold mb-2">
-                            Challenge {index + 1}: {challenge.type.toUpperCase()} CORRUPTION
-                            {challenge.solved && <span className="text-green-400 ml-2">✓ RESTORED</span>}
-                          </h4>
-                          {challenge.type === "sort" && (
-                            <div>
-                              <div>Corrupted Array: [{challenge.data.join(", ")}]</div>
-                              <Button
-                                onClick={() => handlePuzzleAction("solve")}
-                                className="mt-2 bg-green-600 hover:bg-green-700 text-black"
-                                disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
-                              >
-                                Restore Sort Order
-                              </Button>
-                            </div>
-                          )}
-                          {challenge.type === "search" && (
-                            <div>
+                {
+                  currentLevelConfig.puzzleType === "multiAlgorithm" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Complete all system restoration challenges:</p>
+                      <div className="space-y-4">
+                        {currentPuzzleData.challenges?.map((challenge: any, index: number) => (
+                          <Card key={index} className="bg-gray-800 p-4">
+                            <h4 className="font-bold mb-2">
+                              Challenge {index + 1}: {challenge.type.toUpperCase()} CORRUPTION
+                              {challenge.solved && <span className="text-green-400 ml-2">✓ RESTORED</span>}
+                            </h4>
+                            {challenge.type === "sort" && (
                               <div>
-                                Search Array: [{challenge.data.join(", ")}], Target: {challenge.target}
+                                <div>Corrupted Array: [{challenge.data.join(", ")}]</div>
+                                <Button
+                                  onClick={() => handlePuzzleAction("solve")}
+                                  className="mt-2 bg-green-600 hover:bg-green-700 text-black"
+                                  disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
+                                >
+                                  Restore Sort Order
+                                </Button>
                               </div>
-                              <Button
-                                onClick={() => handlePuzzleAction("solve")}
-                                className="mt-2 bg-green-600 hover:bg-green-700 text-black"
-                                disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
-                              >
-                                Execute Binary Search
-                              </Button>
-                            </div>
-                          )}
-                          {challenge.type === "tree" && (
-                            <div>
-                              <div>Task: Restore tree balance</div>
-                              <Button
-                                onClick={() => handlePuzzleAction("solve")}
-                                className="mt-2 bg-green-600 hover:bg-green-700 text-black"
-                                disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
-                              >
-                                Balance Tree Structure
-                              </Button>
-                            </div>
-                          )}
-                          {challenge.type === "graph" && (
-                            <div>
-                              <div>Task: Repair shortest path algorithm</div>
-                              <Button
-                                onClick={() => handlePuzzleAction("solve")}
-                                className="mt-2 bg-green-600 hover:bg-green-700 text-black"
-                                disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
-                              >
-                                Restore Pathfinding
-                              </Button>
-                            </div>
-                          )}
-                          {challenge.type === "hash" && (
-                            <div>
-                              <div>Task: Fix hash collision resolution</div>
-                              <Button
-                                onClick={() => handlePuzzleAction("solve")}
-                                className="mt-2 bg-green-600 hover:bg-green-700 text-black"
-                                disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
-                              >
-                                Repair Hash Table
-                              </Button>
-                            </div>
-                          )}
-                        </Card>
-                      ))}
+                            )}
+                            {challenge.type === "search" && (
+                              <div>
+                                <div>
+                                  Search Array: [{challenge.data.join(", ")}], Target: {challenge.target}
+                                </div>
+                                <Button
+                                  onClick={() => handlePuzzleAction("solve")}
+                                  className="mt-2 bg-green-600 hover:bg-green-700 text-black"
+                                  disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
+                                >
+                                  Execute Binary Search
+                                </Button>
+                              </div>
+                            )}
+                            {challenge.type === "tree" && (
+                              <div>
+                                <div>Task: Restore tree balance</div>
+                                <Button
+                                  onClick={() => handlePuzzleAction("solve")}
+                                  className="mt-2 bg-green-600 hover:bg-green-700 text-black"
+                                  disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
+                                >
+                                  Balance Tree Structure
+                                </Button>
+                              </div>
+                            )}
+                            {challenge.type === "graph" && (
+                              <div>
+                                <div>Task: Repair shortest path algorithm</div>
+                                <Button
+                                  onClick={() => handlePuzzleAction("solve")}
+                                  className="mt-2 bg-green-600 hover:bg-green-700 text-black"
+                                  disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
+                                >
+                                  Restore Pathfinding
+                                </Button>
+                              </div>
+                            )}
+                            {challenge.type === "hash" && (
+                              <div>
+                                <div>Task: Fix hash collision resolution</div>
+                                <Button
+                                  onClick={() => handlePuzzleAction("solve")}
+                                  className="mt-2 bg-green-600 hover:bg-green-700 text-black"
+                                  disabled={challenge.solved || index !== currentPuzzleData.currentChallenge}
+                                >
+                                  Repair Hash Table
+                                </Button>
+                              </div>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+                      <div className="mt-4 text-center">
+                        Systems Restored: {currentPuzzleData.totalSolved}/{currentPuzzleData.challenges?.length}
+                      </div>
                     </div>
-                    <div className="mt-4 text-center">
-                      Systems Restored: {currentPuzzleData.totalSolved}/{currentPuzzleData.challenges?.length}
-                    </div>
-                  </div>
-                )}
+                  )
+                }
 
                 {/* Other puzzle types remain the same... */}
-                {currentLevelConfig.puzzleType === "codeFragment" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Drag and drop the code lines to restore the function:</p>
-                    <div className="space-y-2 mb-4">
-                      {currentPuzzleData.currentOrder?.map((fragmentIndex: number, index: number) => (
-                        <div
-                          key={index}
-                          className="bg-gray-800 p-3 rounded border border-gray-600 cursor-move hover:border-green-400/50 transition-colors"
-                          draggable
-                          onDragStart={(e) => e.dataTransfer.setData("text/plain", index.toString())}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault()
-                            const dragIndex = Number.parseInt(e.dataTransfer.getData("text/plain"))
-                            const newOrder = [...currentPuzzleData.currentOrder]
-                            const draggedItem = newOrder[dragIndex]
-                            newOrder.splice(dragIndex, 1)
-                            newOrder.splice(index, 0, draggedItem)
-                            handlePuzzleAction("reorder", newOrder)
-                          }}
-                        >
-                          <code className="text-green-400">{currentPuzzleData.fragments?.[fragmentIndex]}</code>
-                        </div>
-                      ))}
+                {
+                  currentLevelConfig.puzzleType === "codeFragment" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Drag and drop the code lines to restore the function:</p>
+                      <div className="space-y-2 mb-4">
+                        {currentPuzzleData.currentOrder?.map((fragmentIndex: number, index: number) => (
+                          <div
+                            key={index}
+                            className="bg-gray-800 p-3 rounded border border-gray-600 cursor-move hover:border-green-400/50 transition-colors"
+                            draggable
+                            onDragStart={(e) => e.dataTransfer.setData("text/plain", index.toString())}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              const dragIndex = Number.parseInt(e.dataTransfer.getData("text/plain"))
+                              const newOrder = [...currentPuzzleData.currentOrder]
+                              const draggedItem = newOrder[dragIndex]
+                              newOrder.splice(dragIndex, 1)
+                              newOrder.splice(index, 0, draggedItem)
+                              handlePuzzleAction("reorder", newOrder)
+                            }}
+                          >
+                            <code className="text-green-400">{currentPuzzleData.fragments?.[fragmentIndex]}</code>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        onClick={() => handlePuzzleAction("check")}
+                        className="bg-green-600 hover:bg-green-700 text-black font-bold"
+                      >
+                        EXECUTE CODE
+                      </Button>
                     </div>
-                    <Button
-                      onClick={() => handlePuzzleAction("check")}
-                      className="bg-green-600 hover:bg-green-700 text-black font-bold"
-                    >
-                      EXECUTE CODE
-                    </Button>
-                  </div>
-                )}
+                  )
+                }
 
-                {currentLevelConfig.puzzleType === "logicGate" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Solve the logic gates by determining the correct outputs:
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      {currentPuzzleData.gates?.map((gate: any) => (
-                        <div key={gate.id} className="bg-gray-800 p-4 rounded border border-gray-600">
-                          <div className="text-center mb-2">
-                            <Cpu className="w-8 h-8 mx-auto text-blue-400" />
-                            <div className="text-lg font-bold">{gate.type}</div>
+                {
+                  currentLevelConfig.puzzleType === "logicGate" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Solve the logic gates by determining the correct outputs:
+                      </p>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        {currentPuzzleData.gates?.map((gate: any) => (
+                          <div key={gate.id} className="bg-gray-800 p-4 rounded border border-gray-600">
+                            <div className="text-center mb-2">
+                              <Cpu className="w-8 h-8 mx-auto text-blue-400" />
+                              <div className="text-lg font-bold">{gate.type}</div>
+                            </div>
+                            <div className="text-sm mb-2">
+                              Inputs:{" "}
+                              {gate.inputs.map((input: boolean, i: number) => (
+                                <span key={i} className={input ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+                                  {input.toString()}
+                                  {i < gate.inputs.length - 1 ? ", " : ""}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handlePuzzleAction("solve", { id: gate.id, output: true })}
+                                className="bg-green-600 hover:bg-green-700 text-black"
+                              >
+                                TRUE
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handlePuzzleAction("solve", { id: gate.id, output: false })}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                FALSE
+                              </Button>
+                            </div>
+                            {gate.output !== null && (
+                              <div className="mt-2 text-gray-300">
+                                Output:{" "}
+                                <span className={gate.output ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+                                  {gate.output.toString()}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <div className="text-sm mb-2">
-                            Inputs: {gate.inputs.map((input: boolean) => input.toString()).join(", ")}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handlePuzzleAction("solve", { id: gate.id, output: true })}
-                              className="bg-green-600 hover:bg-green-700 text-black"
-                            >
-                              TRUE
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handlePuzzleAction("solve", { id: gate.id, output: false })}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              FALSE
-                            </Button>
-                          </div>
-                          {gate.output !== null && (
-                            <div className="mt-2 text-green-400">Output: {gate.output.toString()}</div>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      <div className="text-center">
+                        Progress: {currentPuzzleData.solved}/{currentPuzzleData.required}
+                      </div>
                     </div>
-                    <div className="text-center">
-                      Progress: {currentPuzzleData.solved}/{currentPuzzleData.required}
-                    </div>
-                  </div>
-                )}
+                  )
+                }
 
-                {currentLevelConfig.puzzleType === "memorySequence" && (
-                  <div>
-                    <p className="text-sm text-gray-400 mb-4">Memorize and repeat the corrupted sequence:</p>
-                    <div className="grid grid-cols-4 gap-2 mb-4">
-                      {[0, 1, 2, 3].map((colorIndex) => (
-                        <Button
-                          key={colorIndex}
-                          className={`h-16 ${
-                            colorIndex === 0
+                {
+                  currentLevelConfig.puzzleType === "memorySequence" && (
+                    <div>
+                      <p className="text-sm text-gray-400 mb-4">Memorize and repeat the corrupted sequence:</p>
+                      <div className="grid grid-cols-4 gap-2 mb-4">
+                        {[0, 1, 2, 3].map((colorIndex) => (
+                          <Button
+                            key={colorIndex}
+                            className={`h - 16 ${colorIndex === 0
                               ? "bg-red-600 hover:bg-red-700"
                               : colorIndex === 1
                                 ? "bg-blue-600 hover:bg-blue-700"
                                 : colorIndex === 2
                                   ? "bg-green-600 hover:bg-green-700"
                                   : "bg-yellow-600 hover:bg-yellow-700"
-                          }`}
-                          onClick={() => handlePuzzleAction("input", colorIndex)}
-                        />
-                      ))}
-                    </div>
-                    <div className="text-center">
-                      <div>Target: {currentPuzzleData.sequence?.join(", ")}</div>
-                      <div>Your input: {currentPuzzleData.playerSequence?.join(", ")}</div>
-                    </div>
-                  </div>
-                )}
-
-                {currentLevelConfig.puzzleType === "terminalHacking" && (
-                  <div>
-                    <Card className="bg-black border-green-400 p-4 h-64 overflow-y-auto mb-4">
-                      <div className="space-y-1">
-                        {terminalOutput.map((line, index) => (
-                          <div key={index} className="text-green-400 text-sm font-mono">
-                            {line}
-                          </div>
+                              } `}
+                            onClick={() => handlePuzzleAction("input", colorIndex)}
+                          />
                         ))}
                       </div>
-                    </Card>
-                    <div className="flex">
-                      <span className="text-green-400 mr-2">{">"}</span>
-                      <input
-                        type="text"
-                        value={terminalInput}
-                        onChange={(e) => setTerminalInput(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") {
-                            handlePuzzleAction("command", terminalInput)
-                            setTerminalInput("")
-                          }
-                        }}
-                        className="flex-1 bg-transparent text-green-400 outline-none font-mono"
-                        placeholder="Enter command..."
-                        autoFocus
-                      />
+                      <div className="text-center">
+                        <div>
+                          Target:{" "}
+                          {currentPuzzleData.sequence?.map((num: number, i: number) => (
+                            <span
+                              key={i}
+                              className={`font - bold ${num === 0
+                                ? "text-red-400"
+                                : num === 1
+                                  ? "text-blue-400"
+                                  : num === 2
+                                    ? "text-green-400"
+                                    : "text-yellow-400"
+                                } `}
+                            >
+                              {num}
+                              {i < currentPuzzleData.sequence.length - 1 ? ", " : ""}
+                            </span>
+                          ))}
+                        </div>
+                        <div>
+                          Your input:{" "}
+                          {currentPuzzleData.playerSequence?.map((num: number, i: number) => (
+                            <span
+                              key={i}
+                              className={`font - bold ${num === 0
+                                ? "text-red-400"
+                                : num === 1
+                                  ? "text-blue-400"
+                                  : num === 2
+                                    ? "text-green-400"
+                                    : "text-yellow-400"
+                                } `}
+                            >
+                              {num}
+                              {i < currentPuzzleData.playerSequence.length - 1 ? ", " : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      Required sequence: {currentPuzzleData.requiredCommands?.join(" → ")}
+                  )
+                }
+
+                {
+                  currentLevelConfig.puzzleType === "terminalHacking" && (
+                    <div>
+                      <Card className="bg-black border-green-400 p-4 h-64 overflow-y-auto mb-4">
+                        <div className="space-y-1">
+                          {terminalOutput.map((line, index) => (
+                            <div key={index} className="text-green-400 text-sm font-mono">
+                              {line}
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                      <div className="flex">
+                        <span className="text-green-400 mr-2">{">"}</span>
+                        <input
+                          type="text"
+                          value={terminalInput}
+                          onChange={(e) => setTerminalInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter") {
+                              handlePuzzleAction("command", terminalInput)
+                              setTerminalInput("")
+                            }
+                          }}
+                          className="flex-1 bg-transparent text-green-400 outline-none font-mono"
+                          placeholder="Enter command..."
+                          autoFocus
+                        />
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        Required sequence: {currentPuzzleData.requiredCommands?.join(" → ")}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </Card>
+                  )
+                }
+              </Card >
 
               {/* Level Complete Message */}
-              {gameState.isLevelComplete && (
-                <Card className="bg-green-900/80 border-green-400 p-6 text-center">
-                  <h3 className="text-2xl font-bold text-green-400 mb-2">CORRUPTION NEUTRALIZED</h3>
-                  <p className="text-gray-300">System restored. Advancing to next corruption level...</p>
-                  {gameState.hintsUsed > 0 && (
-                    <p className="text-yellow-400 text-sm mt-2">Hints used: {gameState.hintsUsed}</p>
-                  )}
-                  {gameState.timerExtensions > 0 && (
-                    <p className="text-blue-400 text-sm">Timer extensions: {gameState.timerExtensions}</p>
-                  )}
-                </Card>
-              )}
-            </div>
-          </div>
-        )}
+              {
+                gameState.isLevelComplete && (
+                  <Card className="bg-green-900/80 border-green-400 p-6 text-center">
+                    <h3 className="text-2xl font-bold text-green-400 mb-2">CORRUPTION NEUTRALIZED</h3>
+                    <p className="text-gray-300">System restored. Advancing to next corruption level...</p>
+                    {gameState.hintsUsed > 0 && (
+                      <p className="text-yellow-400 text-sm mt-2">Hints used: {gameState.hintsUsed}</p>
+                    )}
+                    {gameState.timerExtensions > 0 && (
+                      <p className="text-blue-400 text-sm">Timer extensions: {gameState.timerExtensions}</p>
+                    )}
+                  </Card>
+                )
+              }
+            </div >
+          </div >
+        )
+      }
 
-        {/* Game Over Screen */}
-        {gameState.currentScreen === "gameOver" && (
+      {/* Game Over Screen */}
+      {
+        gameState.currentScreen === "gameOver" && (
           <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
             <div className="animate-pulse">
               <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-400" />
@@ -2109,10 +2094,12 @@ export default function GhostFrame() {
               </div>
             </div>
           </div>
-        )}
+        )
+      }
 
-        {/* Escape Screen */}
-        {gameState.currentScreen === "escape" && (
+      {/* Escape Screen */}
+      {
+        gameState.currentScreen === "escape" && (
           <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
             <div className="animate-pulse">
               <h1 className="text-4xl font-bold mb-4 text-green-400">ESCAPE SUCCESSFUL</h1>
@@ -2126,37 +2113,38 @@ export default function GhostFrame() {
               </Button>
             </div>
           </div>
-        )}
+        )
+      }
 
-        <style jsx global>{`
-          @keyframes glitch {
-            0% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-            100% { transform: translate(0); }
-          }
+      <style jsx global>{`
+  @keyframes glitch {
+    0 % { transform: translate(0); }
+    20 % { transform: translate(-2px, 2px); }
+    40 % { transform: translate(-2px, -2px); }
+    60 % { transform: translate(2px, 2px); }
+    80 % { transform: translate(2px, -2px); }
+    100 % { transform: translate(0); }
+  }
           
-          .glitch-text {
-            animation: glitch 0.3s infinite;
-          }
+          .glitch - text {
+    animation: glitch 0.3s infinite;
+  }
           
-          .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
+          .line - clamp - 2 {
+    display: -webkit - box;
+    -webkit - line - clamp: 2;
+    -webkit - box - orient: vertical;
+    overflow: hidden;
+  }
           
-          .line-clamp-3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
-        `}</style>
-      </div>
-    </>
+          .line - clamp - 3 {
+    display: -webkit - box;
+    -webkit - line - clamp: 3;
+    -webkit - box - orient: vertical;
+    overflow: hidden;
+  }
+  `}</style>
+    </div >
+
   )
 }
